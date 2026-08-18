@@ -10,7 +10,7 @@ function createExtensionHarness() {
 	const notifications: string[] = [];
 
 	const pi = {
-		getAllTools: () => [...ASK_TOOLS, "edit", "write"],
+		getAllTools: () => [...ASK_TOOLS, "edit", "write"].map((name) => ({ name })),
 		getActiveTools: () => activeTools,
 		setActiveTools: async (tools: string[]) => {
 			await Promise.resolve();
