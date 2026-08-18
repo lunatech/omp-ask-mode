@@ -7,7 +7,7 @@ import {
 	ASK_MODE_TOOL_ALLOWLIST,
 	isAskModeToolAllowed,
 	isSafeCommand,
-} from "./utils.js";
+} from "./utils.ts";
 
 const DEFAULT_RESTORE_TOOL_ORDER = ["read", "bash", "edit", "write"] as const;
 const READ_ONLY_SUBAGENT_PREFIX =
@@ -44,7 +44,7 @@ function getLatestCustomData<T>(ctx: ExtensionContext, customType: string): T | 
 }
 
 function getAvailableToolNames(pi: ExtensionAPI): Set<string> {
-	return new Set(pi.getAllTools().map((tool) => tool.name));
+	return new Set(pi.getAllTools());
 }
 
 function getAskModeTools(pi: ExtensionAPI): string[] {
@@ -176,7 +176,7 @@ export default function askModeExtension(pi: ExtensionAPI): void {
 		ctx.ui.setStatus("ask-mode", askModeEnabled ? ctx.ui.theme.fg("accent", "ask") : undefined);
 	}
 
-	function restoreFromBranch(ctx: ExtensionContext): void {
+	async function restoreFromBranch(ctx: ExtensionContext): Promise<void> {
 		const wasAskEnabled = askModeEnabled;
 		const oldPreviousActiveTools = previousActiveTools;
 		const oldInterruptedMode = interruptedMode;
@@ -198,10 +198,10 @@ export default function askModeExtension(pi: ExtensionAPI): void {
 
 		const askTools = getAskModeTools(pi);
 		if (askModeEnabled && askTools.length > 0) {
-			pi.setActiveTools(askTools);
+			await pi.setActiveTools(askTools);
 		} else if (wasAskEnabled && oldAskTools.length > 0 && sameToolSet(currentActiveTools, oldAskTools)) {
 			const toolsToRestore = oldInterruptedMode === "plan" ? getFallbackRestoreTools(pi) : resolveRestoreTools(pi, oldPreviousActiveTools);
-			pi.setActiveTools(toolsToRestore);
+			await pi.setActiveTools(toolsToRestore);
 		}
 		updateStatus(ctx);
 	}
@@ -229,18 +229,18 @@ export default function askModeExtension(pi: ExtensionAPI): void {
 		askModeEnabled = true;
 		previousActiveTools = [...currentActiveTools];
 		interruptedMode = null;
-		pi.setActiveTools(askTools);
+		await pi.setActiveTools(askTools);
 		updateStatus(ctx);
 		persistState();
 		ctx.ui.notify(`Ask mode enabled. Allowlisted tools: ${askTools.join(", ")}`, "info");
 	}
 
-	function disableAskMode(ctx: ExtensionCommandContext): void {
+	async function disableAskMode(ctx: ExtensionCommandContext): Promise<void> {
 		askModeEnabled = false;
 		const toolsToRestore = interruptedMode === "plan" ? getFallbackRestoreTools(pi) : resolveRestoreTools(pi, previousActiveTools);
 		previousActiveTools = undefined;
 		interruptedMode = null;
-		pi.setActiveTools(toolsToRestore);
+		await pi.setActiveTools(toolsToRestore);
 		updateStatus(ctx);
 		persistState();
 		ctx.ui.notify("Ask mode disabled.", "info");
@@ -267,15 +267,14 @@ export default function askModeExtension(pi: ExtensionAPI): void {
 				return;
 			}
 			if (action === "off") {
-				if (askModeEnabled) disableAskMode(ctx);
+				if (askModeEnabled) await disableAskMode(ctx);
 				else ctx.ui.notify("Ask mode is already disabled.", "info");
 				return;
 			}
-			if (askModeEnabled) disableAskMode(ctx);
+			if (askModeEnabled) await disableAskMode(ctx);
 			else await enableAskMode(ctx);
 		},
 	});
-
 	pi.on("session_start", async (_event, ctx) => restoreFromBranch(ctx));
 	pi.on("session_tree", async (_event, ctx) => restoreFromBranch(ctx));
 
