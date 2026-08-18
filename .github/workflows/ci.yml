@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test extension and oh-my-pi integration
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out extension
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Run package tests with npm
+        run: npm test
+
+      - name: Run package tests with Bun
+        run: bun test
+
+      - name: Check out oh-my-pi
+        uses: actions/checkout@v4
+        with:
+          repository: can1357/oh-my-pi
+          ref: main
+          path: oh-my-pi
+
+      - name: Install oh-my-pi dependencies
+        working-directory: oh-my-pi
+        run: bun install --frozen-lockfile
+
+      # Source checkouts do not contain a native addon. Use the latest Linux
+      # release addon, matching oh-my-pi's own PR test strategy, so this job
+      # exercises extension loading without rebuilding the Rust workspace.
+      - name: Install oh-my-pi native addon
+        working-directory: oh-my-pi
+        shell: bash
+        run: |
+          set -euo pipefail
+          tarball="$(npm view @oh-my-pi/pi-natives-linux-x64@latest dist.tarball)"
+          mkdir -p "$RUNNER_TEMP/omp-native"
+          curl -fsSL --retry 3 "$tarball" | tar -xz -C "$RUNNER_TEMP/omp-native"
+          mkdir -p packages/natives/native
+          cp "$RUNNER_TEMP/omp-native/package/pi_natives.linux-x64-baseline.node" packages/natives/native/
+          cp "$RUNNER_TEMP/omp-native/package/pi_natives.linux-x64-modern.node" packages/natives/native/
+
+      - name: Install extension into oh-my-pi
+        working-directory: oh-my-pi
+        env:
+          EXTENSION_REPO: ${{ github.workspace }}
+        run: bun packages/coding-agent/src/cli.ts install "$EXTENSION_REPO"
+
+      - name: Verify installed plugin with Bun
+        working-directory: oh-my-pi
+        run: bun packages/coding-agent/src/cli.ts plugin list --json
