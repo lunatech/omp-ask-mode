@@ -3,6 +3,14 @@ import test from "node:test";
 import askModeExtension from "../extensions/ask-mode.ts";
 
 const ASK_TOOLS = ["read", "bash", "grep", "find", "ls", "subagent"];
+const HOST_TOOLS = [...ASK_TOOLS, "edit", "write"].map((name) => ({
+	name,
+	description: `${name} tool`,
+	parameters: {},
+	promptGuidelines: undefined,
+	sourceInfo: { source: "builtin" },
+}));
+
 
 function createExtensionHarness() {
 	let activeTools = ["read", "bash", "edit"];
@@ -10,7 +18,7 @@ function createExtensionHarness() {
 	const notifications: string[] = [];
 
 	const pi = {
-		getAllTools: () => [...ASK_TOOLS, "edit", "write"].map((name) => ({ name })),
+		getAllTools: () => HOST_TOOLS,
 		getActiveTools: () => activeTools,
 		setActiveTools: async (tools: string[]) => {
 			await Promise.resolve();
@@ -40,7 +48,7 @@ function createExtensionHarness() {
 	return { command, ctx, getActiveTools: () => activeTools, notifications };
 }
 
-test("/ask enables the allowlisted tool names returned by the host", async () => {
+test("/ask enables allowlisted ToolInfo records returned by the host", async () => {
 	const harness = createExtensionHarness();
 
 	await harness.command("on", harness.ctx);
