@@ -9,7 +9,8 @@ permissions:
 jobs:
   test:
     name: Test extension and oh-my-pi integration
-    runs-on: ubuntu-22.04
+    # Tree-sitter's Linux prebuild requires GLIBCXX_3.4.31, unavailable on Ubuntu 22.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
