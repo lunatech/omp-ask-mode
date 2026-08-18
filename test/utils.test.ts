@@ -23,6 +23,8 @@ test("safe commands allow explicitly approved read-only forms", () => {
 		"curl https://example.com",
 		"wget -O - https://example.com",
 		"node --version",
+		"cat \"file name with spaces.txt\"",
+		"cat '$HOME-is-literal'",
 	]) {
 		assert.equal(isSafeCommand(command), true, command);
 	}
@@ -42,6 +44,11 @@ test("unknown commands and unsupported shell syntax fail closed", () => {
 		"git diff | cat",
 		"git diff && echo done",
 		"cat file.txt > output.txt",
+		"git diff\ncat",
+		"git diff &&",
+		"for f in *; do cat \"$f\"; done",
+		"cat \"$HOME\"",
+		"cat < input.txt",
 		"cat $(printf file.txt)",
 		"FOO=bar npm list",
 	]) {

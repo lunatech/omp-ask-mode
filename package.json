@@ -9,6 +9,10 @@
   "scripts": {
     "test": "node --experimental-strip-types --test test/**/*.test.ts"
   },
+  "dependencies": {
+    "tree-sitter": "^0.25.1",
+    "tree-sitter-bash": "^0.25.1"
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*"
   },

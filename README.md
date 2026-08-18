@@ -98,6 +98,7 @@ Toggle it during a session:
 
 ```text
 /ask
+
 ```
 
 Or use an explicit action:
@@ -126,7 +127,8 @@ Ask mode applies three checks:
 
 Bash uses a fail-closed command allowlist. It accepts explicitly approved read-only commands and subcommands such as `git diff`, `grep`, `find`, `npm list`, `curl` GET requests, and `wget -O -` fetches. Unknown commands and unsupported forms are rejected.
 
-The shell parser rejects pipelines, command chaining, background jobs, redirects, heredocs, command substitution, subshells, wrappers, and environment assignments. Command-specific checks also reject write-capable options such as `git --ext-diff`, `curl --data`, `curl -o`, `find -exec`, `sed -i`, and `awk system(...)`.
+The parsed command must be one simple command. Pipelines, command chaining, background jobs, redirects, heredocs, command substitution, subshells, wrappers, and environment assignments are rejected. Command-specific checks also reject write-capable options such as `git --ext-diff`, `curl --data`, `curl -o`, `find -exec`, `sed -i`, and `awk system(...)`.
+Before applying the command allowlist, bash input is parsed with the Tree-sitter Bash grammar. Parse errors and ASTs containing multiple commands, pipelines, redirects, substitutions, subshells, loops, or other compound syntax are rejected. This avoids trying to reproduce shell parsing with a tokenizer.
 
 Subagents may inspect, search, analyze, compare, explain, or summarize. Worktrees, output files, mutating tasks, and mutating management actions are blocked.
 

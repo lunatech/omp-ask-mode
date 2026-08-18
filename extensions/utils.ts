@@ -1,3 +1,9 @@
+import Parser from "tree-sitter";
+import Bash from "tree-sitter-bash";
+
+const BASH_PARSER = new Parser();
+BASH_PARSER.setLanguage(Bash);
+
 export const ASK_MODE_TOOL_ALLOWLIST = [
 	"read",
 	"bash",
@@ -166,70 +172,53 @@ function allowsPackageManagerQuery(args: readonly string[], allowedSubcommands: 
 	return args.length > 0 && allowedSubcommands.includes(args[0]) && !hasForbiddenWriteOption(args.slice(1));
 }
 
-function tokenizeCommand(command: string): string[] | null {
-	const tokens: string[] = [];
-	let current = "";
-	let quote: "single" | "double" | null = null;
-	let tokenStarted = false;
+interface BashNode {
+	type: string;
+	text: string;
+	namedChildren: BashNode[];
+	namedChildCount: number;
+	hasError: boolean;
+	fieldNameForNamedChild(index: number): string | null;
+}
 
-	const pushToken = () => {
-		if (tokenStarted) tokens.push(current);
-		current = "";
-		tokenStarted = false;
-	};
+function getShellArgumentText(node: BashNode): string | null {
+	if (node.type === "word") return node.text;
+	if (node.type === "string") {
+		if (node.namedChildren.some((child) => child.type !== "string_content")) return null;
+		return node.text.length >= 2 ? node.text.slice(1, -1) : null;
+	}
+	if (node.type === "raw_string") return node.text.length >= 2 ? node.text.slice(1, -1) : null;
+	return null;
+}
 
-	for (let index = 0; index < command.length; index++) {
-		const char = command[index];
-		if (quote === "single") {
-			if (char === "'") quote = null;
-			else current += char;
-			tokenStarted = true;
-			continue;
-		}
-		if (quote === "double") {
-			if (char === '"') {
-				quote = null;
-				tokenStarted = true;
-				continue;
-			}
-			if (char === "$" || char === "`") return null;
-			if (char === "\\") {
-				const next = command[++index];
-				if (next === undefined) return null;
-				current += next;
-				tokenStarted = true;
-				continue;
-			}
-			current += char;
-			tokenStarted = true;
-			continue;
-		}
+function parseAllowlistedSimpleCommand(command: string): { program: string; args: string[] } | null {
+	const tree = BASH_PARSER.parse(command);
+	const root = tree.rootNode as unknown as BashNode;
+	if (root.hasError || root.namedChildren.length !== 1) return null;
 
-		if (char === "'" || char === '"') {
-			quote = char === "'" ? "single" : "double";
-			tokenStarted = true;
+	const statement = root.namedChildren[0];
+	if (statement.type !== "command") return null;
+
+	let program: string | null = null;
+	const args: string[] = [];
+	for (let index = 0; index < statement.namedChildCount; index++) {
+		const child = statement.namedChildren[index];
+		const field = statement.fieldNameForNamedChild(index);
+		if (field === "name") {
+			if (program !== null || child.type !== "command_name" || child.namedChildCount !== 1) return null;
+			const commandWord = child.namedChildren[0];
+			if (commandWord.type !== "word") return null;
+			program = commandWord.text;
 			continue;
 		}
-		if (/\s/.test(char)) {
-			if (char === "\n" || char === "\r") return null;
-			pushToken();
-			continue;
-		}
-		if (char === "\\") {
-			const next = command[++index];
-			if (next === undefined || /[$`|;&<>#()]/.test(next)) return null;
-			current += next;
-			tokenStarted = true;
-			continue;
-		}
-		if ("$`|;&<>#()".includes(char)) return null;
-		current += char;
-		tokenStarted = true;
+		if (field !== "argument") return null;
+		const argument = getShellArgumentText(child);
+		if (argument === null) return null;
+		args.push(argument);
 	}
 
-	if (quote !== null) return null;
-	pushToken();
-	return tokens.length > 0 ? tokens : null;
+	if (program === null || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(program)) return null;
+	return { program, args };
 }
 
 const COMMAND_POLICIES: Record<string, CommandPolicy> = Object.fromEntries(
@@ -248,14 +237,14 @@ COMMAND_POLICIES.node = (args) => args.length === 1 && ["--version", "-v"].inclu
 COMMAND_POLICIES.python = COMMAND_POLICIES.node;
 COMMAND_POLICIES.python3 = COMMAND_POLICIES.node;
 
+
 export function isAskModeToolAllowed(toolName: string): boolean {
 	return (ASK_MODE_TOOL_ALLOWLIST as readonly string[]).includes(toolName);
 }
 
 export function isSafeCommand(command: string): boolean {
-	const tokens = tokenizeCommand(command.trim());
-	if (!tokens) return false;
-	const [program, ...args] = tokens;
-	const policy = COMMAND_POLICIES[program];
-	return policy !== undefined && policy(args);
+	const parsed = parseAllowlistedSimpleCommand(command.trim());
+	if (parsed === null) return false;
+	const policy = COMMAND_POLICIES[parsed.program];
+	return policy !== undefined && policy(parsed.args);
 }
