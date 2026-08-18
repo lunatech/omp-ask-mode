@@ -18,14 +18,14 @@ The extension also blocks non-allowlisted tool calls defensively. This includes 
 From a checkout of oh-my-pi, link this local package into the plugin set:
 
 ```sh
-omp install ~/work/omp-ask-mode
+omp install /path/to/omp-ask-mode
 ```
 
 When running oh-my-pi from source, use the source CLI instead:
 
 ```sh
-cd ~/work/oh-my-pi
-bun packages/coding-agent/src/cli.ts install ~/work/omp-ask-mode
+cd /path/to/oh-my-pi
+bun packages/coding-agent/src/cli.ts install /path/to/omp-ask-mode
 ```
 
 The package manifest points oh-my-pi at `extensions/ask-mode.ts`.
@@ -47,7 +47,7 @@ omp plugin install github:lunatech/omp-ask-mode
 When running oh-my-pi from its source checkout:
 
 ```sh
-cd ~/work/oh-my-pi
+cd /path/to/oh-my-pi
 bun packages/coding-agent/src/cli.ts install github:lunatech/omp-ask-mode
 ```
 
@@ -68,18 +68,18 @@ omp plugin list
 Load the extension for one session with `--extension` (or `-e`):
 
 ```sh
-cd ~/work/oh-my-pi
+cd /path/to/oh-my-pi
 bun packages/coding-agent/src/cli.ts \
-  --extension ~/work/omp-ask-mode
+  --extension /path/to/omp-ask-mode
 ```
 
 You can also load the extension directly from the oh-my-pi source tree while starting in ask mode:
 
 ```sh
-cd ~/work/oh-my-pi
+cd /path/to/oh-my-pi
 bun packages/coding-agent/src/cli.ts \
   --ask \
-  --extension ~/work/omp-ask-mode
+  --extension /path/to/omp-ask-mode
 ```
 
 To load it for every session, add the package directory to your oh-my-pi config:
@@ -87,7 +87,7 @@ To load it for every session, add the package directory to your oh-my-pi config:
 ```yaml
 # ~/.omp/agent/config.yml
 extensions:
-  - ~/work/omp-ask-mode
+  - /path/to/omp-ask-mode
 ```
 
 For a project-only installation, put the same setting in `.omp/config.yml` in that project.
