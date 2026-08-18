@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Check out extension
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -32,7 +32,7 @@ jobs:
         run: bun test
 
       - name: Check out oh-my-pi
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: can1357/oh-my-pi
           ref: main
