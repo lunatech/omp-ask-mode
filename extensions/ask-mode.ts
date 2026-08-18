@@ -44,7 +44,7 @@ function getLatestCustomData<T>(ctx: ExtensionContext, customType: string): T | 
 }
 
 function getAvailableToolNames(pi: ExtensionAPI): Set<string> {
-	return new Set(pi.getAllTools());
+	return new Set(pi.getAllTools().map((tool) => tool.name));
 }
 
 function getAskModeTools(pi: ExtensionAPI): string[] {
